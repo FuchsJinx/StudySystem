@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Maven)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: unirate
+          POSTGRES_USER: unirate
+          POSTGRES_PASSWORD: unirate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U unirate -d unirate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Unit tests
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/unirate
+          SPRING_DATASOURCE_USERNAME: unirate
+          SPRING_DATASOURCE_PASSWORD: unirate
+        run: mvn -B test
+      - name: Package
+        run: mvn -B -DskipTests package
+
+  frontend:
+    name: Frontend (Node)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install
+        run: npm install
+      - name: Lint (tsc)
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Unit tests
+        run: npm test
+
+  docker:
+    name: Docker Compose build
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build images
+        run: docker compose build
+      - name: Up stack
+        run: docker compose up -d
+      - name: Wait for health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8080/api/v1/health | grep -q UP; then
+              echo "backend OK"
+              exit 0
+            fi
+            sleep 5
+          done
+          docker compose logs
+          exit 1
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

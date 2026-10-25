@@ -1,0 +1,68 @@
+:root {
+  --bg: #0f1c17;
+  --fg: #e8f2ec;
+  --accent: #3d9b6a;
+  --muted: #9bb5a6;
+  font-family: "Segoe UI", "PT Root UI", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--fg);
+  background:
+    radial-gradient(ellipse 80% 50% at 20% -10%, #1a3d2e 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, #243d28 0%, transparent 50%),
+    var(--bg);
+}
+
+.shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.brand {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--fg);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+nav a:hover {
+  color: var(--accent);
+}
+
+.hero h1 {
+  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  margin: 0 0 0.5rem;
+}
+
+.hero p {
+  color: var(--muted);
+  max-width: 36rem;
+  line-height: 1.5;
+}
+
+.hero ul {
+  margin-top: 1.5rem;
+  padding-left: 1.1rem;
+  color: var(--fg);
+}

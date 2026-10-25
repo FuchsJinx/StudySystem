@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: unirate-backend
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/unirate}
+    username: ${SPRING_DATASOURCE_USERNAME:unirate}
+    password: ${SPRING_DATASOURCE_PASSWORD:unirate}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    defer-datasource-initialization: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+unirate:
+  jwt:
+    secret: ${JWT_SECRET:change-me-in-production-use-long-random-string}
+    ttl-seconds: 86400
+  uploads:
+    dir: ${UPLOADS_DIR:/data/uploads}
+    max-bytes: 10485760
+  worker:
+    enabled: ${UNIRATE_WORKER_ENABLED:false}
+    deduct-delay-ms: 60000
+  llm:
+    api-key: ${LLM_API_KEY:}
+    base-url: ${LLM_BASE_URL:}
+
+logging:
+  level:
+    ru.unirate: INFO
