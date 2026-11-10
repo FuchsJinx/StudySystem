@@ -20,6 +20,8 @@ import { PollCreatePage } from "../pages/PollCreatePage";
 import { PollDetailPage } from "../pages/PollDetailPage";
 import { PersonalFeedPage } from "../pages/PersonalFeedPage";
 import { AdminPage } from "../pages/AdminPage";
+import { NotificationsPage } from "../pages/NotificationsPage";
+import { AnalyticsPage } from "../pages/AnalyticsPage";
 
 function NotFoundPage() {
   return (
@@ -67,6 +69,7 @@ export function App() {
           <Route index element={<DashboardPage />} />
           <Route path="/feed" element={<AwardFeedPage />} />
           <Route path="/my-feed" element={<PersonalFeedPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/users/:id" element={<ProfilePage />} />
           <Route element={<RequireRole roles={["ADMIN"]} />}>
@@ -81,6 +84,7 @@ export function App() {
             <Route path="/activities/:id" element={<TeacherActivityDetailPage />} />
             <Route path="/polls/new" element={<PollCreatePage />} />
             <Route path="/budget" element={<BudgetPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
           </Route>
           <Route element={<RequireRole roles={["STUDENT"]} />}>
             <Route path="/tasks" element={<StudentTasksPage />} />

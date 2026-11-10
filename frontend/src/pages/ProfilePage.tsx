@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError } from "../shared/api/client";
+import type { AiRatingTips } from "../shared/api/aiTypes";
 import type { NotificationSettings, ProfileResponse } from "../shared/api/types";
 import { useAuth } from "../shared/auth/AuthContext";
 import { formatAmount, formatDateTime, initials, roleLabels, statusLabels } from "../shared/format";
@@ -29,6 +30,9 @@ export function ProfilePage() {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
   const [telegramChatId, setTelegramChatId] = useState("");
+  const [tips, setTips] = useState<AiRatingTips | null>(null);
+  const [tipsLoading, setTipsLoading] = useState(false);
+  const [tipsError, setTipsError] = useState<string | null>(null);
 
   const isOwn = Boolean(user && targetId === user.id);
 
@@ -99,6 +103,19 @@ export function ProfilePage() {
 
   const isStudent = profile.role === "STUDENT";
   const maxRating = 1000;
+
+  const loadTips = async () => {
+    setTipsLoading(true);
+    setTipsError(null);
+    try {
+      const response = await api<AiRatingTips>("/ai/rating-tips", { method: "POST" });
+      setTips(response);
+    } catch (err) {
+      setTipsError(err instanceof ApiError ? err.message : "Сервис ИИ временно недоступен");
+    } finally {
+      setTipsLoading(false);
+    }
+  };
 
   return (
     <>
@@ -172,6 +189,42 @@ export function ProfilePage() {
               <small>Общественная активность</small>
             </Card>
           </div>
+
+          {isOwn ? (
+            <Card className="ai-panel">
+              <div className="ai-panel__head">
+                <strong>Как поднять рейтинг?</strong>
+                <span className="badge badge--gold">Модуль 11</span>
+              </div>
+              <p className="muted">
+                Персональные советы по вашим агрегированным показателям: АР, БУА, БОА и просрочкам.
+              </p>
+              <div className="ai-panel__actions">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  icon="sparkles"
+                  loading={tipsLoading}
+                  onClick={loadTips}
+                >
+                  Получить советы
+                </Button>
+                {tips ? (
+                  <span className="muted small">
+                    {tips.provider === "demo" ? "Демо-режим ИИ (ключ не настроен)" : "Советы сгенерированы ИИ"}
+                  </span>
+                ) : null}
+              </div>
+              {tipsError ? <Alert variant="warning">{tipsError}</Alert> : null}
+              {tips ? (
+                <ol className="ai-tips">
+                  {tips.tips.map((tip, index) => (
+                    <li key={index}>{tip}</li>
+                  ))}
+                </ol>
+              ) : null}
+            </Card>
+          ) : null}
 
           <div className="dashboard-grid">
             <Card>

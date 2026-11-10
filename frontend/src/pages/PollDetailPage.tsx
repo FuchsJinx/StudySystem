@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError } from "../shared/api/client";
+import type { AiTextResponse } from "../shared/api/aiTypes";
 import type {
   PollDetail,
   PollQuestionResult,
@@ -59,6 +60,9 @@ export function PollDetailPage() {
   const [answers, setAnswers] = useState<Record<number, number[]>>({});
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSummary, setAiSummary] = useState<AiTextResponse | null>(null);
 
   const load = useCallback(() => {
     if (!pollId || Number.isNaN(pollId)) {
@@ -115,6 +119,23 @@ export function PollDetailPage() {
       setError(err instanceof ApiError ? err.message : "Не удалось отправить голос");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const generateSummary = async () => {
+    if (!poll) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const response = await api<AiTextResponse>("/ai/poll-summary", {
+        method: "POST",
+        body: { pollId: poll.id },
+      });
+      setAiSummary(response);
+    } catch (err) {
+      setAiError(err instanceof ApiError ? err.message : "Сервис ИИ временно недоступен");
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -216,6 +237,34 @@ export function PollDetailPage() {
             </span>
           </div>
           <ResultBars results={poll.results} />
+          {isTeacher ? (
+            <div className="ai-panel">
+              <div className="ai-panel__head">
+                <strong>ИИ-сводка ответов</strong>
+                <span className="badge badge--gold">Модуль 11</span>
+              </div>
+              <div className="ai-panel__actions">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  icon="sparkles"
+                  loading={aiLoading}
+                  onClick={generateSummary}
+                >
+                  Сгенерировать сводку
+                </Button>
+                {aiSummary ? (
+                  <span className="muted small">
+                    {aiSummary.provider === "demo"
+                      ? "Демо-режим ИИ (ключ не настроен)"
+                      : "Сводка сгенерирована ИИ"}
+                  </span>
+                ) : null}
+              </div>
+              {aiError ? <Alert variant="warning">{aiError}</Alert> : null}
+              {aiSummary ? <p className="pre-wrap ai-summary">{aiSummary.text}</p> : null}
+            </div>
+          ) : null}
         </Card>
       ) : (
         <Card>
