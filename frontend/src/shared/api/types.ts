@@ -129,3 +129,8 @@ export interface NotificationSettings {
 export interface MessageResponse {
   message: string;
 }
+
+export interface PageResponse<T> {
+  items: T[];
+  nextCursor: number | null;
+}
