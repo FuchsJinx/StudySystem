@@ -70,8 +70,8 @@
 |------|--------|
 | Аудит | ✅ завершён |
 | План/Git | ✅ `develop` создана |
-| 1 Auth/профили | ⏳ |
-| 2 АР | — |
+| 1 Auth/профили | ✅ реализовано и проверено (34 backend-теста, 13 frontend-тестов) |
+| 2 АР | ⏳ backend + UI реализованы, интеграционные тесты 11/11 |
 | 3 Баллы/лента | — |
 | 4 Опросы | — |
 | 5 Персональная лента | — |
@@ -86,9 +86,20 @@
 - `backend`: `mvn test` (unit + integration на PostgreSQL, env `SPRING_DATASOURCE_URL`).
 - `frontend`: `npm run lint`, `npm test`, `npm run build`.
 - `docker compose up --build` + smoke-скрипт.
-- E2E: Playwright (после реализации).
+- E2E: `npm run test:e2e` (Playwright, локально `channel: msedge`; в CI — chromium после установки).
+
+## Последние проверки
+
+| Дата | Что | Результат |
+|------|-----|-----------|
+| 2026-11-10 | `mvn test` (auth, membership, rating) | 34 passed |
+| 2026-11-10 | `npm test` | 13 passed |
+| 2026-11-10 | `npm run build` | OK |
+| 2026-11-10 | Playwright: teacher create → student submit → teacher accept | 2/2 passed |
+| 2026-11-10 | Mailhog: письмо подтверждения | доставлено |
 
 ## Известные ограничения на старте
 
 - Docker daemon локально может быть не запущен (запускается Docker Desktop).
+- Vite watcher падал на временных файлах редактора; добавлен `server.watch.ignored`.
 - В CI нет Playwright-шага — будет добавлен.
