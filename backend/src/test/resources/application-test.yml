@@ -21,6 +21,9 @@ unirate:
     external-enabled: false
   uploads:
     dir: ${java.io.tmpdir}/unirate-test-uploads
+  llm:
+    api-key: ""
+    base-url: ""
 
 logging:
   level:

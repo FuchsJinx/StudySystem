@@ -2,6 +2,8 @@ package ru.unirate.application;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import ru.unirate.domain.model.FeedEventType;
 import ru.unirate.infrastructure.persistence.entity.FeedEvent;
 import ru.unirate.infrastructure.persistence.entity.Notification;
@@ -15,10 +17,14 @@ public class EventService {
 
     private final FeedEventRepository feedEventRepository;
     private final NotificationRepository notificationRepository;
+    private final ExternalNotificationSender externalNotificationSender;
 
-    public EventService(FeedEventRepository feedEventRepository, NotificationRepository notificationRepository) {
+    public EventService(FeedEventRepository feedEventRepository,
+                        NotificationRepository notificationRepository,
+                        ExternalNotificationSender externalNotificationSender) {
         this.feedEventRepository = feedEventRepository;
         this.notificationRepository = notificationRepository;
+        this.externalNotificationSender = externalNotificationSender;
     }
 
     @Transactional
@@ -38,7 +44,22 @@ public class EventService {
         notification.setBody(body);
         notification.setKind(kind == null ? null : kind.name());
         notification.setLink(link);
-        return notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
+        dispatchAfterCommit(user, title, body);
+        return saved;
+    }
+
+    private void dispatchAfterCommit(User user, String title, String body) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    externalNotificationSender.send(user, title, body);
+                }
+            });
+        } else {
+            externalNotificationSender.send(user, title, body);
+        }
     }
 
     @Transactional

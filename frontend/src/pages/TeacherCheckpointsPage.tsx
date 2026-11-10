@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError } from "../shared/api/client";
+import type { AiTextResponse } from "../shared/api/aiTypes";
 import type { CheckpointSummary } from "../shared/api/checkpointTypes";
 import type { Group } from "../shared/api/types";
 import { formatDateTime, toDateTimeInputValue, toIsoFromLocalInput } from "../shared/format";
@@ -33,6 +34,10 @@ export function TeacherCheckpointsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [aiTheses, setAiTheses] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiProvider, setAiProvider] = useState<"demo" | "openai" | null>(null);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -70,6 +75,31 @@ export function TeacherCheckpointsPage() {
         ? current.groupIds.filter((groupId) => groupId !== id)
         : [...current.groupIds, id],
     }));
+  };
+
+  const generateDescription = async () => {
+    if (!form.title.trim()) {
+      setAiError("Сначала укажите название задачи");
+      return;
+    }
+    if (!aiTheses.trim()) {
+      setAiError("Опишите тезисы задания");
+      return;
+    }
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const response = await api<AiTextResponse>("/ai/draft-checkpoint", {
+        method: "POST",
+        body: { title: form.title.trim(), theses: aiTheses.trim() },
+      });
+      setForm((current) => ({ ...current, description: response.text }));
+      setAiProvider(response.provider);
+    } catch (err) {
+      setAiError(err instanceof ApiError ? err.message : "Сервис ИИ временно недоступен");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const createCheckpoint = async (event: React.FormEvent) => {
@@ -205,6 +235,42 @@ export function TeacherCheckpointsPage() {
               maxLength={255}
             />
           </Field>
+          <div className="ai-panel">
+            <div className="ai-panel__head">
+              <strong>ИИ-помощник</strong>
+              <span className="badge badge--gold">Модуль 11</span>
+            </div>
+            <Field
+              label="Тезисы задания"
+              htmlFor="cp-ai-theses"
+              hint="Кратко перечислите цель, шаги и требования — ИИ соберёт черновик описания"
+            >
+              <Textarea
+                id="cp-ai-theses"
+                value={aiTheses}
+                onChange={(event) => setAiTheses(event.target.value)}
+                placeholder="Цель: первый раздел курсовой. Шаги: введение, обзор литературы, постановка задачи…"
+                maxLength={3000}
+              />
+            </Field>
+            <div className="ai-panel__actions">
+              <Button
+                type="button"
+                variant="secondary"
+                icon="sparkles"
+                loading={aiLoading}
+                onClick={generateDescription}
+              >
+                Сгенерировать описание
+              </Button>
+              {aiProvider ? (
+                <span className="muted small">
+                  {aiProvider === "demo" ? "Демо-режим ИИ (ключ не настроен)" : "Сгенерировано ИИ"}
+                </span>
+              ) : null}
+            </div>
+            {aiError ? <Alert variant="warning">{aiError}</Alert> : null}
+          </div>
           <Field
             label="Описание"
             htmlFor="cp-description"

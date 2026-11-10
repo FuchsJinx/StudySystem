@@ -36,4 +36,14 @@ public interface PointLedgerRepository extends JpaRepository<PointLedgerEntry, L
     List<PointLedgerEntry> findAfter(@Param("currency") PointCurrency currency,
                                      @Param("studentId") Long studentId,
                                      @Param("after") Instant after);
+
+    @Query("""
+            select l from PointLedgerEntry l
+            join fetch l.studentProfile sp
+            where sp.group.id = :groupId and l.currency = :currency and l.createdAt >= :from
+            order by l.createdAt asc
+            """)
+    List<PointLedgerEntry> findForGroupSince(@Param("groupId") Long groupId,
+                                             @Param("currency") PointCurrency currency,
+                                             @Param("from") Instant from);
 }

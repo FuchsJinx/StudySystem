@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../shared/auth/AuthContext";
 import { api } from "../shared/api/client";
+import type { UnreadCount } from "../shared/api/notificationTypes";
 import { Avatar, Button, Icon } from "../shared/ui";
 import type { IconName } from "../shared/ui/icons";
 
@@ -15,12 +16,14 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Главная", icon: "home" },
   { to: "/feed", label: "Лента наград", icon: "award" },
-  { to: "/my-feed", label: "Моя лента", icon: "bell" },
+  { to: "/my-feed", label: "Моя лента", icon: "sparkles" },
+  { to: "/notifications", label: "Уведомления", icon: "bell" },
   { to: "/tasks", label: "Мои задачи", icon: "book", roles: ["STUDENT"] },
   { to: "/checkpoints", label: "Задачи", icon: "book", roles: ["TEACHER"] },
   { to: "/activities", label: "Активности", icon: "megaphone", roles: ["STUDENT", "TEACHER"] },
   { to: "/polls", label: "Опросы", icon: "poll", roles: ["STUDENT", "TEACHER"] },
   { to: "/budget", label: "Бюджет", icon: "wallet", roles: ["TEACHER"] },
+  { to: "/analytics", label: "Аналитика", icon: "chart", roles: ["TEACHER"] },
   { to: "/admin", label: "Администрирование", icon: "shield", roles: ["ADMIN"] },
   { to: "/profile", label: "Профиль", icon: "user" },
   { to: "/membership", label: "Заявки в группы", icon: "users", roles: ["TEACHER", "ADMIN", "STUDENT"] },
@@ -30,8 +33,29 @@ export function Layout() {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
   const [resending, setResending] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    const loadUnread = () => {
+      api<UnreadCount>("/notifications/unread-count")
+        .then((response) => {
+          if (active) setUnread(response.count);
+        })
+        .catch(() => undefined);
+    };
+    loadUnread();
+    const timer = window.setInterval(loadUnread, 60_000);
+    window.addEventListener("unirate:notifications-changed", loadUnread);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("unirate:notifications-changed", loadUnread);
+    };
+  }, [user]);
 
   if (!user) {
     return null;
@@ -90,6 +114,9 @@ export function Layout() {
             >
               <Icon name={item.icon} size={19} />
               <span>{item.label}</span>
+              {item.to === "/notifications" && unread > 0 ? (
+                <span className="nav-link__badge">{unread > 99 ? "99+" : unread}</span>
+              ) : null}
             </NavLink>
           ))}
         </nav>
