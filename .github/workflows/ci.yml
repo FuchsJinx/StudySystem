@@ -17,7 +17,7 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: unirate
+          POSTGRES_DB: unirate_test
           POSTGRES_USER: unirate
           POSTGRES_PASSWORD: unirate
         ports:
@@ -37,11 +37,11 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Unit tests
+      - name: Unit and integration tests
         env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/unirate
-          SPRING_DATASOURCE_USERNAME: unirate
-          SPRING_DATASOURCE_PASSWORD: unirate
+          TEST_DATABASE_URL: jdbc:postgresql://localhost:5432/unirate_test
+          TEST_DATABASE_USERNAME: unirate
+          TEST_DATABASE_PASSWORD: unirate
         run: mvn -B test
       - name: Package
         run: mvn -B -DskipTests package
