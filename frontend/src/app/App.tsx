@@ -8,6 +8,9 @@ import { VerifyEmailPage } from "../pages/auth/VerifyEmailPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { ProfilePage } from "../pages/ProfilePage";
 import { MembershipPage } from "../pages/MembershipPage";
+import { StudentTasksPage } from "../pages/StudentTasksPage";
+import { TeacherCheckpointsPage } from "../pages/TeacherCheckpointsPage";
+import { TeacherCheckpointDetailPage } from "../pages/TeacherCheckpointDetailPage";
 
 function NotFoundPage() {
   return (
@@ -55,6 +58,13 @@ export function App() {
           <Route index element={<DashboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/users/:id" element={<ProfilePage />} />
+          <Route element={<RequireRole roles={["STUDENT"]} />}>
+            <Route path="/tasks" element={<StudentTasksPage />} />
+          </Route>
+          <Route element={<RequireRole roles={["TEACHER", "ADMIN"]} />}>
+            <Route path="/checkpoints" element={<TeacherCheckpointsPage />} />
+            <Route path="/checkpoints/:id" element={<TeacherCheckpointDetailPage />} />
+          </Route>
           <Route element={<RequireRole roles={["TEACHER", "ADMIN", "STUDENT"]} />}>
             <Route path="/membership" element={<MembershipPage />} />
           </Route>

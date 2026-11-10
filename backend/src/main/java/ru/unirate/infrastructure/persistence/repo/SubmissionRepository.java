@@ -26,7 +26,8 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     @EntityGraph(attributePaths = {"studentProfile", "studentProfile.user", "studentProfile.group"})
     List<Submission> findByCheckpointIdOrderByStudentProfileUserFullNameAsc(Long checkpointId);
 
-    @EntityGraph(attributePaths = {"checkpoint", "studentProfile", "studentProfile.user"})
+    @EntityGraph(attributePaths = {"checkpoint", "checkpoint.createdBy", "checkpoint.createdBy.user",
+            "studentProfile", "studentProfile.user", "studentProfile.group"})
     @Query("select s from Submission s where s.id = :id")
     Optional<Submission> findWithDetailsById(@Param("id") Long id);
 
@@ -34,7 +35,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     @Query("select s from Submission s where s.id = :id")
     Optional<Submission> findForUpdate(@Param("id") Long id);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Submission s set s.status = :overdue where s.status = :inProgress and s.checkpoint.deadline < :now")
     int markOverdue(@Param("inProgress") SubmissionStatus inProgress,
                     @Param("overdue") SubmissionStatus overdue,

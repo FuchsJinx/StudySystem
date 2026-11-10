@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../shared/api/client";
+import type { StudentCheckpoint } from "../shared/api/checkpointTypes";
 import type { LedgerEntry, MembershipRequest } from "../shared/api/types";
 import { useAuth } from "../shared/auth/AuthContext";
 import { formatAmount, formatDateTime, membershipLabels, plural } from "../shared/format";
@@ -20,6 +21,7 @@ export function DashboardPage() {
   const { user } = useAuth();
   const [pending, setPending] = useState<MembershipRequest[] | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[] | null>(null);
+  const [tasks, setTasks] = useState<StudentCheckpoint[] | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -27,6 +29,9 @@ export function DashboardPage() {
       api<LedgerEntry[]>(`/users/${user.id}/ledger?limit=6`)
         .then(setLedger)
         .catch(() => setLedger([]));
+      api<StudentCheckpoint[]>("/users/me/checkpoints")
+        .then(setTasks)
+        .catch(() => setTasks([]));
     }
     if (user.role === "TEACHER" || user.role === "ADMIN" ||
         (user.role === "STUDENT" && user.student?.isGroupLead)) {
@@ -64,7 +69,7 @@ export function DashboardPage() {
           }
         />
 
-        <div className="grid grid--3">
+        <div className="grid grid--4">
           <StatCard
             label="Академический рейтинг"
             value={`${student.academicRating} / 1000`}
@@ -85,6 +90,21 @@ export function DashboardPage() {
             hint="БОА за общественные активности"
             icon="award"
             tone="gold"
+          />
+          <StatCard
+            label="Активные задания"
+            value={
+              tasks === null
+                ? "…"
+                : tasks.filter((task) => task.status !== "ACCEPTED").length
+            }
+            hint={
+              tasks === null
+                ? "Загружаем…"
+                : `${tasks.filter((task) => task.status === "OVERDUE").length} просрочено`
+            }
+            icon="clock"
+            tone="red"
           />
         </div>
 
@@ -183,6 +203,18 @@ export function DashboardPage() {
           <Card>
             <h2>Быстрые действия</h2>
             <div className="quick-actions">
+              <Link to="/tasks" className="quick-action">
+                <Icon name="book" />
+                <span>
+                  <strong>Мои задания</strong>
+                  <small>
+                    {tasks === null
+                      ? "Загрузка…"
+                      : `${tasks.filter((task) => task.status !== "ACCEPTED").length} активных, ${tasks.filter((task) => task.status === "OVERDUE").length} просрочено`}
+                  </small>
+                </span>
+                <Icon name="arrowRight" size={16} />
+              </Link>
               <Link to="/profile" className="quick-action">
                 <Icon name="user" />
                 <span>
@@ -217,11 +249,16 @@ export function DashboardPage() {
           title={`Здравствуйте, ${user.fullName}!`}
           subtitle={teacher ? teacher.departmentName : "Преподаватель"}
           actions={
-            <Link to="/membership">
-              <Button variant="secondary" icon="users">
-                Заявки в группы
-              </Button>
-            </Link>
+            <>
+              <Link to="/membership">
+                <Button variant="secondary" icon="users">
+                  Заявки в группы
+                </Button>
+              </Link>
+              <Link to="/checkpoints">
+                <Button icon="book">Мои задачи</Button>
+              </Link>
+            </>
           }
         />
         <div className="grid grid--3">
