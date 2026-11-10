@@ -73,4 +73,9 @@ erDiagram
 - `submissions.ar_debited` ≥ 0 и ≤ checkpoint.cost (приложение + частичный CHECK)
 
 Полный DDL: `backend/src/main/resources/db/migration/V1__init.sql`  
-Seed: `V2__seed.sql`
+Seed: `V2__seed.sql`  
+Расширения: `V3__schema_extensions.sql` (VARCHAR+CHECK вместо enum, аудит подтверждения группы,
+файлы/комментарии проверки, сообщения персональной ленты, поля уведомлений, маркеры дедлайнов/опросов).
+
+Демо-контент (задачи с относительными датами, активности, награды, опросы) создаётся идемпотентным
+`DemoDataSeeder` при старте backend; в профиле `worker` и в тестах отключён.

@@ -1,110 +1,104 @@
 # UniRate — план и прогресс разработки
 
-Файл для продолжения работы между сессиями. Обновляется после каждого этапа.
+Файл для продолжения работы между сессиями. Обновлён после завершения реализации.
+
+## Итоговый статус
+
+Все 11 модулей реализованы, интегрированы и проверены. Проект запускается одной командой
+`docker compose up --build`, демо-данные создаются автоматически.
+
+| # | Модуль | Состояние | Проверка |
+|---|--------|-----------|----------|
+| 1 | Регистрация, авторизация, профили, ledger | ✅ | AuthIntegrationTest, UI |
+| 2 | Академический рейтинг, задания, проверка, автосписание | ✅ | RatingIntegrationTest (11), E2E |
+| 3 | БУА/БОА, активности, бюджеты | ✅ | ActivityIntegrationTest (13), E2E |
+| 4 | Лента наград | ✅ | ActivityIntegrationTest, E2E |
+| 5 | Опросы и голосования | ✅ | PollIntegrationTest (9), E2E |
+| 6 | Персональная лента, напоминания | ✅ | FeedIntegrationTest (4), E2E |
+| 7 | Email/группа, подтверждение | ✅ | Auth/Membership tests, UI |
+| 8 | Админ-панель, импорт CSV/Excel, семестры | ✅ | AdminIntegrationTest (8), E2E |
+| 9 | Уведомления in-app/email/Telegram | ✅ | NotificationIntegrationTest, Mailhog |
+| 10 | Аналитика и статистика | ✅ | AnalyticsIntegrationTest (5), E2E |
+| 11 | ИИ-функции с fallback | ✅ | AiIntegrationTest, E2E |
 
 ## Аудит исходного состояния (2026-11-10)
 
-| Что | Состояние |
-|-----|-----------|
+| Что | Было |
+|-----|------|
 | Git | ветка `main`, один коммит `Initialize repo` |
-| Backend | каркас: `UnirateApplication`, `/api/v1/health`, `SecurityConfig` (httpBasic), `RatingEngine`, `BudgetPolicy`, пустой `ArDeductionJob` |
-| БД | `V1__init.sql` (полная схема ядра), `V2__seed.sql` (справочники, demo users, settings) |
-| Frontend | каркас Vite: 2 страницы, без авторизации и API-клиента |
-| Тесты | 6 unit-тестов (`RatingEngineTest`, `BudgetPolicyTest`) |
-| Docker | compose с db/backend/worker/frontend/mailhog; worker без логики |
-| Документация | полная (`docs/spec`, `docs/qa`, `AGENTS.md`) |
+| Backend | каркас: health, `SecurityConfig` (httpBasic), `RatingEngine`, `BudgetPolicy`, пустой `ArDeductionJob` |
+| БД | `V1__init.sql`, `V2__seed.sql` |
+| Frontend | 2 страницы, без авторизации и API-клиента |
+| Тесты | 6 unit-тестов |
+| Docker | compose с db/backend/worker/frontend/mailhog без логики worker |
 
-**Вывод:** реализованы только A1 (частично) и A2/A3-заготовки. Требуется реализация модулей 1–11 целиком (backend + frontend + тесты).
+## Архитектурные решения
 
-## Архитектурные решения (фиксируются здесь)
-
-1. **Слои**: `api` (controllers, DTO, error, security) → `application` (use-cases) → `domain` (чистые правила) → `infrastructure` (JPA, jobs, mail, LLM, storage). Существующие `RatingEngine`/`BudgetPolicy` сохраняются и расширяются.
-2. **JWT HS256**, `Authorization: Bearer`. В токене `uid`, `role`, `sid` (studentProfileId), `tid` (teacherProfileId). Фильтр проверяет подпись и существование пользователя.
-3. **Ошибки API**: `{"error":{"code":"...","message":"русский текст"}}`; глобальный handler для validation/RBAC/500.
-4. **Пароль**: BCrypt. Требование ≥ 8 символов.
-5. **Email**: Mailhog/SMTP. Токен верификации — UUID в `email_verification_tokens`, TTL 24 ч. Login до подтверждения разрешён (banner в UI), мутации заданий/баллов/голосования — 403 `EMAIL_NOT_VERIFIED`.
-6. **Группа**: регистрация → `PENDING`. Подтверждает преподаватель группы или староста (или admin). До `CONFIRMED` новые checkpoint/награды не назначаются. При подтверждении назначаются актуальные (дедлайн в будущем) checkpoint-ы группы.
-7. **Списание АР**: отдельный `ArDeductionJob` (profile `worker`), интервал читается из `app_settings.arDeductIntervalSec`; внутренний tick 1 c, фактический запуск не чаще интервала. Транзакция + pessimistic lock на submission и student profile. Повторный тик — штатное списание (не дубль), двойной параллельный запуск защищён блокировками.
-8. **Бюджет**: атомарный PostgreSQL upsert с условием в `budget_spends`; проверка per teacher × group × календарный месяц; валюта — сумма начисленных БУА+БОА.
-9. **Ленты**: `award_feed_items` (публичная, только начисления) и `feed_events` (персональная, текст рендерится при записи, поле `message`). Курсор — `id` (keyset пагинация).
-10. **Уведомления**: in-app всегда; email/telegram — по настройкам пользователя, отправка асинхронно и не ломает бизнес-транзакцию. Telegram без токена — mock-транспорт с логом.
-11. **AI**: OpenAI-совместимый клиент при заданном `LLM_API_KEY`+`LLM_BASE_URL`; без ключа — детерминированный demo-fallback (`provider=demo`), ошибка настроенного LLM → 503 `AI_UNAVAILABLE`. Промпты — в `domain/ai/PromptTemplates`, ПДн не отправляются.
-12. **Файлы**: каталог `UPLOADS_DIR`, имена UUID, whitelist pdf/zip/doc/docx/png, ≤10 МБ; скачивание только owner/teacher/admin через контроллер с проверкой прав.
-13. **Демо-данные**: миграции V1/V2 (справочники, пользователи, settings) + V3 (расширения схемы) + `DemoDataSeeder` (checkpoint/activity/poll с датами относительно запуска, идемпотентно; отключается `UNIRATE_DEMO_SEED=false` и в тестах).
-14. **Настройки** — только через `app_settings`, без хардкода в сервисах; дефолты из spec 10.
+1. **Слои**: `api` → `application` → `domain` → `infrastructure`; доменные правила АР/бюджета — чистые классы с unit-тестами.
+2. **JWT HS256**; claims `uid/role/sid/tid`; фильтр проверяет пользователя в БД. RBAC — `@PreAuthorize` + правила в сервисах.
+3. **Ошибки API** единого формата `{error:{code,message,details}}`; русские сообщения.
+4. **Email-верификация**: UUID-токен, TTL 24 ч, Mailhog в dev; login разрешён, мутации закрыты до подтверждения.
+5. **Группа**: `PENDING → CONFIRMED/REJECTED`; подтверждает преподаватель группы, староста или admin; при подтверждении назначаются актуальные будущие checkpoint-ы.
+6. **Списание АР**: worker-профиль, интервал из `app_settings.arDeductIntervalSec`, внутренний тик 1 с, pessimistic lock на submission/student, журнал в `point_ledger`.
+7. **Бюджет**: атомарный PostgreSQL upsert `INSERT … ON CONFLICT … WHERE amount + EXCLUDED <= limit`; превышение не изменяет строку и возвращает 400 `BUDGET_EXCEEDED`.
+8. **Ленты**: `award_feed_items` (публичная, только БУА/БОА) и `feed_events` (персональная, keyset-пагинация по id).
+9. **Уведомления**: in-app всегда, внешние каналы асинхронно после commit; Telegram без токена — mock с логом; email через Mailhog.
+10. **ИИ**: OpenAI-совместимый клиент при ключе; без ключа — детерминированный fallback `provider=demo`; ошибка настроенного LLM → 503 `AI_UNAVAILABLE`.
+11. **Файлы**: `UPLOADS_DIR`, UUID-имена, whitelist pdf/zip/doc/docx/png, ≤10 МБ, проверка прав при скачивании.
+12. **Демо-данные**: миграции V1–V3 + `DemoDataSeeder` с датами относительно старта, идемпотентно, отключается env и не работает в worker/тестах.
+13. **Настройки** только через `app_settings`; дефолты по spec 10.
+14. **Тесты интеграции** — отдельная БД `unirate_test`, чтобы демо/E2E-данные не влияли на assertions.
 
 ## Решения по неоднозначностям spec
 
 | Вопрос | Решение |
 |--------|---------|
-| Повторная награда за одну активность | запрещена, 409 `AWARD_ALREADY_EXISTS` (идемпотентность баллов) |
+| Повторная награда за активность | 409 `AWARD_ALREADY_EXISTS` |
 | Повторный голос | 409 `ALREADY_VOTED`, изменение запрещено |
 | Accept/Return | только для `SUBMITTED`; batch атомарный |
-| Подача работы: url и файл | разрешены оба, но хотя бы один обязателен |
-| Import students | admin-импорт считается доверенным: email verified, membership CONFIRMED |
-| Публичный профиль | AR/БУА/БОА/группа/кафедра видны всем auth; ledger и задания — только self/teacher/admin |
-| Семестровый бонус | `min(arMax, AR+bonus)`, запись в ledger только при delta>0 |
-| Чужие баллы | студент видит только свои начисления в ledger; лента наград публична по ТЗ |
-| Кто подтверждает группу | teacher, привязанный к группе, староста этой группы, admin |
-| Привязка teacher↔group | автоматически при создании checkpoint/activity на группу |
+| Подача работы | хотя бы ссылка или файл; оба разрешены |
+| Импорт студентов | доверенный: email verified, membership CONFIRMED |
+| Публичный профиль | AR/БУА/БОА/группа видны всем auth; ledger и задания — self/teacher/admin |
+| Семестровый бонус | `min(arMax, AR+bonus)`, ledger только при delta>0 |
+| Кто подтверждает группу | teacher группы, староста группы, admin |
+| Привязка teacher↔group | автоматически при создании checkpoint/activity |
+| Анонимный опрос | преподаватель видит только агрегаты; ответы хранятся для защиты от повторного голоса |
+| AI без ключа | demo-fallback, честно помечается в UI |
 
-## Этапы (ветки от develop)
+## Git-история (основные ветки)
 
-| # | Ветка | Модули | Критерий готовности |
-|---|-------|--------|---------------------|
-| 0 | `docs/implementation-plan` | — | план, API-контракт, решения зафиксированы |
-| 1 | `feature/auth-profiles` | 1, 7 (email/группа) + каркас | register/login/JWT/RBAC, профиль, ledger, verify, confirm; integration tests |
-| 2 | `feature/academic-rating` | 2 | checkpoint CRUD, submit/accept/return, job списания, UI W3–W4, тесты AR-01…20 |
-| 3 | `feature/activity-budget` | 3, 4 | активности, enroll, award %, бюджет, лента наград, UI W5–W6, тесты AC/FD |
-| 4 | `feature/polls` | 5 | опросы SINGLE/MULTIPLE/анонимность, UI W8, тесты PL |
-| 5 | `feature/personal-feed` | 6 | события student/teacher, дедлайн-джоба, UI W7, тесты PF |
-| 6 | `feature/admin-panel` | 8 | CRUD справочников, CSV/Excel импорт, семестры, settings, UI W9, тесты AD |
-| 7 | `feature/notifications` | 9 | in-app + email + telegram mock, настройки, тесты NT |
-| 8 | `feature/analytics` | 10 | AR-динамика, рейтинги, бюджет, UI W10, тесты AN |
-| 9 | `feature/ai-integration` | 11 | 3 AI-точки с fallback, UI W11, тесты AI |
-| 10 | `test/e2e-and-polish` | все | E2E Playwright, compose up, acceptance, README/docs, merge → main |
+`main` → `develop` → тематические ветки: `feature/auth-profiles`, `feature/academic-rating`,
+`feature/activity-budget`, `feature/polls`, `feature/personal-feed`, `feature/admin-panel`,
+`feature/notifications-analytics-ai`. Интеграция — merge --no-ff в `develop`.
 
-## Статус
+Ключевые коммиты: `feat(infra)`, `feat(security)`, `feat(auth)`, `feat(rating)`, `feat(activity)`,
+`feat(feed)`, `feat(polls)`, `feat(admin)`, `feat(notifications)`, `feat(analytics)`, `feat(ai)`,
+`test(...)`, `docs(...)`, `ci: ...`.
 
-| Этап | Статус |
-|------|--------|
-| Аудит | ✅ завершён |
-| План/Git | ✅ `develop` создана |
-| 1 Auth/профили | ✅ реализовано и проверено (34 backend-теста, 13 frontend-тестов) |
-| 2 АР | ✅ backend + UI + job; 11 интеграционных тестов, Playwright 2/2 |
-| 3 Баллы/лента | ✅ активности, запись, БУА/БОА, бюджет, лента наград; 13 интеграционных тестов, E2E 1/1 |
-| 4 Опросы | — |
-| 5 Персональная лента | — |
-| 6 Админка | — |
-| 7 Уведомления | — |
-| 8 Аналитика | — |
-| 9 ИИ | — |
-| 10 E2E/полировка | — |
+## Проверки (финальные)
 
-## Проверки
+| Проверка | Результат |
+|----------|-----------|
+| `mvn test` (unit + integration, PostgreSQL) | **88 passed, 0 failed** |
+| `npm test` (Vitest) | **13 passed** |
+| `npm run build` | OK |
+| `npm run test:e2e` против Docker-стека | **8 passed** |
+| `docker compose up --build` | стек healthy: frontend :80, backend :8080, db, mailhog, worker |
+| Worker `ArDeductionJob` | списание 20 АР за тик, остановка на cost; логи INFO |
+| Mailhog | письма верификации и уведомлений доставлены |
+| Адаптив | проверен скриншотами 1440px и 390px |
+| CI | настроены backend/frontend/docker+E2E job-ы |
 
-- `backend`: `mvn test` (unit + integration на PostgreSQL, env `SPRING_DATASOURCE_URL`).
-- `frontend`: `npm run lint`, `npm test`, `npm run build`.
-- `docker compose up --build` + smoke-скрипт.
-- E2E: `npm run test:e2e` (Playwright, локально `channel: msedge`; в CI — chromium после установки).
+## Известные ограничения
 
-## Последние проверки
+- Реальный LLM и Telegram требуют ключей в env; без них — честный demo/mock режим.
+- Файлы хранятся в локальном Docker volume, без S3.
+- Нет интеграции с реальной АСУ вуза (вне scope MVP).
+- Презентация и QA-слайд к защите — вне репозитория; сценарий демо: `docs/demo-script.md`.
 
-| Дата | Что | Результат |
-|------|-----|-----------|
-| 2026-11-10 | `mvn test` (auth, membership, rating) | 34 passed |
-| 2026-11-10 | `npm test` | 13 passed |
-| 2026-11-10 | `npm run build` | OK |
-| 2026-11-10 | Playwright: teacher create → student submit → teacher accept | 2/2 passed |
-| 2026-11-10 | Mailhog: письмо подтверждения | доставлено |
-| 2026-11-10 | `mvn test` (полный набор после модуля 2) | 34 passed |
-| 2026-11-10 | `npm run build` после страниц задач | OK |
-| 2026-11-10 | `mvn test` после модулей 3–4 | 47 passed |
-| 2026-11-10 | Playwright: SOCIAL → enroll → award 50 % → лента/профиль | 1/1 passed |
-| 2026-11-10 | Бюджет: лимит, атомарный отказ, раздельные группы/месяцы | integration 13/13 |
+## Следующие действия (защита)
 
-## Известные ограничения на старте
-
-- Docker daemon локально может быть не запущен (запускается Docker Desktop).
-- Vite watcher падал на временных файлах редактора; добавлен `server.watch.ignored`.
-- В CI нет Playwright-шага — будет добавлен.
+1. `docker compose down -v && docker compose up -d --build` — чистые демо-данные.
+2. Пройти `docs/demo-script.md`.
+3. Проверить `docs/qa/acceptance-checklist.md` (база 100%).
+4. Подготовить слайд с архитектурой/агентским процессом и скриншоты.
