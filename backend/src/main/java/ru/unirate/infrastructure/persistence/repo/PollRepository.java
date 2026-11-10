@@ -28,4 +28,6 @@ public interface PollRepository extends JpaRepository<Poll, Long> {
     List<Poll> findByEndsAtBeforeAndEndedNotifiedFalse(Instant now);
 
     long countByCreatedById(Long teacherProfileId);
+
+    boolean existsByTitle(String title);
 }

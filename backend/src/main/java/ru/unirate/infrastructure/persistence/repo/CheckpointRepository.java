@@ -22,4 +22,6 @@ public interface CheckpointRepository extends JpaRepository<Checkpoint, Long> {
     List<Checkpoint> findAllByGroupsIdOrderByDeadlineDesc(Long groupId);
 
     long countByCreatedById(Long teacherProfileId);
+
+    boolean existsByTitle(String title);
 }

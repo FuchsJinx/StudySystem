@@ -25,4 +25,6 @@ public interface ActivityRepository extends JpaRepository<Activity, Long> {
     Optional<Activity> findWithDetailsById(@Param("id") Long id);
 
     long countByCreatedById(Long teacherProfileId);
+
+    boolean existsByTitle(String title);
 }
