@@ -125,14 +125,16 @@ public class DemoDataSeeder implements CommandLineRunner {
                 "Лабораторная работа 3",
                 "Реализуйте алгоритм обработки данных и приложите отчёт с результатами тестирования.",
                 Instant.now().minus(1, ChronoUnit.DAYS), 60);
+        Checkpoint group2Checkpoint = null;
         if (group2 != null) {
-            ensureCheckpoint(teacher, group2,
+            group2Checkpoint = ensureCheckpoint(teacher, group2,
                     "Курсовая работа, 2 этап",
                     "Доработайте реализацию и подготовьте презентацию результатов.",
                     Instant.now().plus(10, ChronoUnit.DAYS), 100);
         }
         assign(active, group1);
         assign(overdue, group1);
+        assign(group2Checkpoint, group2);
 
         Activity pastSocial = ensureActivity(teacher, group1,
                 "Помощь в организации конференции",
