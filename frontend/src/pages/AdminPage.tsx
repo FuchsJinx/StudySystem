@@ -12,7 +12,7 @@ import type {
   Setting,
 } from "../shared/api/adminTypes";
 import type { Role } from "../shared/api/types";
-import { formatDate, formatDateTime, roleLabels } from "../shared/format";
+import { formatDate, formatDateTime, plural, roleLabels } from "../shared/format";
 import {
   Alert,
   Button,
@@ -322,7 +322,13 @@ export function AdminPage() {
     if (!stats) return null;
     return (
       <div className="grid grid--4">
-        <StatCard label="Студенты" value={stats.students} hint={`${stats.pendingMemberships} ждут подтверждения`} icon="users" tone="green" />
+        <StatCard
+          label="Студенты"
+          value={stats.students}
+          hint={`${stats.pendingMemberships} ${plural(stats.pendingMemberships, "ждёт", "ждут", "ждут")} подтверждения`}
+          icon="users"
+          tone="green"
+        />
         <StatCard label="Преподаватели" value={stats.teachers} hint={`${stats.departments} кафедры`} icon="user" tone="blue" />
         <StatCard label="Группы" value={stats.groups} hint={`${stats.faculties} факультета`} icon="book" tone="gold" />
         <StatCard label="Награды в ленте" value={stats.awards} hint={`${stats.checkpoints} задач · ${stats.activities} активностей · ${stats.polls} опросов`} icon="award" tone="red" />
@@ -381,7 +387,10 @@ export function AdminPage() {
                     <li key={faculty.id}>
                       <div>
                         <strong>{faculty.name}</strong>
-                        <small>{faculty.groupsCount} групп</small>
+                        <small>
+                          {faculty.groupsCount}{" "}
+                          {plural(faculty.groupsCount, "группа", "группы", "групп")}
+                        </small>
                       </div>
                       <div className="admin-list__actions">
                         <button
@@ -481,7 +490,15 @@ export function AdminPage() {
                     <li key={department.id}>
                       <div>
                         <strong>{department.name}</strong>
-                        <small>{department.teachersCount} преподавателей</small>
+                        <small>
+                          {department.teachersCount}{" "}
+                          {plural(
+                            department.teachersCount,
+                            "преподаватель",
+                            "преподавателя",
+                            "преподавателей",
+                          )}
+                        </small>
                       </div>
                       <div className="admin-list__actions">
                         <button

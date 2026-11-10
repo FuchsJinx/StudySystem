@@ -9,7 +9,7 @@ import type {
   TeacherOverview,
 } from "../shared/api/analyticsTypes";
 import type { Group } from "../shared/api/types";
-import { formatShortDate } from "../shared/format";
+import { formatShortDate, plural } from "../shared/format";
 import {
   Alert,
   Card,
@@ -226,7 +226,13 @@ export function AnalyticsPage() {
 
       {overview ? (
         <div className="grid grid--4">
-          <StatCard label="Студенты" value={overview.students} hint={`${overview.pendingMemberships} ждут подтверждения`} icon="users" tone="green" />
+          <StatCard
+            label="Студенты"
+            value={overview.students}
+            hint={`${overview.pendingMemberships} ${plural(overview.pendingMemberships, "ждёт", "ждут", "ждут")} подтверждения`}
+            icon="users"
+            tone="green"
+          />
           <StatCard label="Задания" value={overview.checkpoints} icon="book" tone="blue" />
           <StatCard label="Активности" value={overview.activities} icon="megaphone" tone="gold" />
           <StatCard label="Опросы" value={overview.polls} icon="poll" tone="red" />
