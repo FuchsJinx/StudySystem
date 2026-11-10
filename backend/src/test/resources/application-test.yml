@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/unirate}
+    username: ${SPRING_DATASOURCE_USERNAME:unirate}
+    password: ${SPRING_DATASOURCE_PASSWORD:unirate}
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+  flyway:
+    enabled: true
+
+unirate:
+  demo-seed:
+    enabled: false
+  worker:
+    enabled: false
+  mail:
+    enabled: false
+  notifications:
+    external-enabled: false
+  uploads:
+    dir: ${java.io.tmpdir}/unirate-test-uploads
+
+logging:
+  level:
+    org.hibernate.SQL: warn
+    org.springframework.security: warn

@@ -1,24 +1,67 @@
 import { Link, Route, Routes } from "react-router-dom";
-import { HomePage } from "../pages/HomePage";
-import { HealthPage } from "../pages/HealthPage";
+import { Layout } from "./Layout";
+import { PublicOnly, RequireAuth, RequireRole } from "./guards";
+import { LoginPage } from "../pages/auth/LoginPage";
+import { RegisterStudentPage } from "../pages/auth/RegisterStudentPage";
+import { RegisterTeacherPage } from "../pages/auth/RegisterTeacherPage";
+import { VerifyEmailPage } from "../pages/auth/VerifyEmailPage";
+import { DashboardPage } from "../pages/DashboardPage";
+import { ProfilePage } from "../pages/ProfilePage";
+import { MembershipPage } from "../pages/MembershipPage";
+
+function NotFoundPage() {
+  return (
+    <div className="auth-simple">
+      <h1>404</h1>
+      <p>Страница не найдена.</p>
+      <Link className="button button--primary" to="/">
+        На главную
+      </Link>
+    </div>
+  );
+}
 
 export function App() {
   return (
-    <div className="shell">
-      <header className="top">
-        <Link to="/" className="brand">
-          UniRate
-        </Link>
-        <nav>
-          <Link to="/health">API health</Link>
-        </nav>
-      </header>
-      <main>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/health" element={<HealthPage />} />
-        </Routes>
-      </main>
-    </div>
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          <PublicOnly>
+            <LoginPage />
+          </PublicOnly>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <PublicOnly>
+            <RegisterStudentPage />
+          </PublicOnly>
+        }
+      />
+      <Route
+        path="/register/teacher"
+        element={
+          <PublicOnly>
+            <RegisterTeacherPage />
+          </PublicOnly>
+        }
+      />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+      <Route element={<RequireAuth />}>
+        <Route element={<Layout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/users/:id" element={<ProfilePage />} />
+          <Route element={<RequireRole roles={["TEACHER", "ADMIN", "STUDENT"]} />}>
+            <Route path="/membership" element={<MembershipPage />} />
+          </Route>
+        </Route>
+      </Route>
+
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
   );
 }
