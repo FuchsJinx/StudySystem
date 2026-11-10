@@ -52,6 +52,18 @@ test("teacher creates checkpoint and student submits it", async ({ browser }) =>
     studentPage.locator(".personal-event").filter({ hasText: title }).filter({ hasText: "принята" }),
   ).toBeVisible();
 
+  await studentPage.goto("/notifications");
+  await expect(
+    studentPage.locator(".notification-item", { hasText: "Работа принята" }).first(),
+  ).toBeVisible();
+  await studentPage.getByRole("button", { name: "Прочитать все" }).click();
+  await expect(studentPage.getByText("Все уведомления прочитаны")).toBeVisible();
+
+  await teacherPage.goto("/notifications");
+  await expect(
+    teacherPage.locator(".notification-item", { hasText: "Работа сдана на проверку" }).first(),
+  ).toBeVisible();
+
   await teacherContext.close();
   await studentContext.close();
 });

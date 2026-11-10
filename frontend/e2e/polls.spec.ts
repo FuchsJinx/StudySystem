@@ -51,6 +51,10 @@ test("teacher creates anonymous poll, student votes and sees aggregates", async 
   await expect(teacherPage.locator(".poll-result").first()).toBeVisible();
   await expect(teacherPage.getByRole("heading", { name: "Кто как ответил" })).toHaveCount(0);
 
+  await teacherPage.getByRole("button", { name: "Сгенерировать сводку" }).click();
+  await expect(teacherPage.locator(".ai-summary")).toBeVisible();
+  await expect(teacherPage.locator(".ai-summary")).toContainText("Всего ответов");
+
   await teacherContext.close();
   await studentContext.close();
 });
