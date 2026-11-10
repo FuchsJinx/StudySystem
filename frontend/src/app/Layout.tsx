@@ -14,6 +14,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Главная", icon: "home" },
+  { to: "/tasks", label: "Мои задачи", icon: "book", roles: ["STUDENT"] },
+  { to: "/checkpoints", label: "Задачи", icon: "book", roles: ["TEACHER"] },
   { to: "/profile", label: "Профиль", icon: "user" },
   { to: "/membership", label: "Заявки в группы", icon: "users", roles: ["TEACHER", "ADMIN", "STUDENT"] },
 ];
