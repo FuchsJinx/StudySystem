@@ -20,12 +20,16 @@ test("admin catalog CRUD and settings changes", async ({ browser }) => {
   await expect(page.getByRole("heading", { name: "Панель администратора" })).toBeVisible();
   await expect(page.getByText("Студенты", { exact: true })).toBeVisible();
 
-  const facultiesCard = page.locator(".card", { hasText: "Факультеты" }).first();
+  const facultiesCard = page
+    .locator(".admin-catalogs .card")
+    .filter({ has: page.getByRole("heading", { name: "Факультеты", exact: true }) });
   await facultiesCard.getByLabel("Новый факультет").fill(facultyName);
   await facultiesCard.getByRole("button", { name: "Добавить" }).click();
   await expect(facultiesCard.getByText(facultyName)).toBeVisible();
 
-  const groupsCard = page.locator(".card", { hasText: "Группы" }).first();
+  const groupsCard = page
+    .locator(".admin-catalogs .card")
+    .filter({ has: page.getByRole("heading", { name: "Группы", exact: true }) });
   await groupsCard.getByLabel("Новая группа").fill(groupName);
   await groupsCard.getByLabel("Факультет группы").selectOption({ label: facultyName });
   await groupsCard.getByRole("button", { name: "Добавить" }).click();
