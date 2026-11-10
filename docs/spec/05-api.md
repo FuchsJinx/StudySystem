@@ -1,101 +1,225 @@
-# 05 — API (макет контракта)
+# 05 — API (контракт)
 
-Базовый префикс: `/api/v1`. Auth: `Authorization: Bearer <token>` (⚠️ JWT — рабочая гипотеза).  
-Ошибки: `{ "error": { "code": "STRING", "message": "русский текст" } }`.
+Базовый префикс: `/api/v1`. Auth: `Authorization: Bearer <JWT>`.
 
-## Auth
+Ошибки — единый формат:
 
-| Method | Path | Описание |
-|--------|------|----------|
-| POST | `/auth/register/student` | email, password, fullName, facultyId, groupId |
-| POST | `/auth/register/teacher` | email, password, fullName, departmentId |
-| POST | `/auth/login` | → token + role |
-| POST | `/auth/verify-email` | token из письма (модуль 7) |
-| GET | `/auth/me` | текущий пользователь |
+```json
+{ "error": { "code": "STRING", "message": "русский текст", "details": ["…"] } }
+```
+
+`details` — опционально (ошибки валидации полей). HTTP-коды: 400 (валидация/бизнес), 401 (нет/просрочен токен),
+403 (роль/чужой ресурс/email/группа), 404, 409 (конфликт/повтор), 413 (файл), 503 (внешний сервис).
+
+> Обновлено при реализации. Значения полей не менять без правки спецификаций модулей.
+
+## Auth (модуль 1)
+
+| Method | Path | Body | Ответ |
+|--------|------|------|-------|
+| POST | `/auth/register/student` | `email, password, fullName, facultyId, groupId` | `201 { token, user }` |
+| POST | `/auth/register/teacher` | `email, password, fullName, departmentId` | `201 { token, user }` |
+| POST | `/auth/login` | `email, password` | `{ token, user }` |
+| POST | `/auth/verify-email` | `{ token }` | `{ verified: true }` |
+| POST | `/auth/resend-verification` | — (auth) | `{ sent: true }` |
+| GET | `/auth/me` | — (auth) | `user` |
+
+`user`:
+
+```json
+{
+  "id": 4, "email": "student@demo.local", "fullName": "Иван Иванов",
+  "role": "STUDENT", "emailVerified": true,
+  "student": {
+    "id": 1, "groupId": 1, "groupName": "ИВТ-21",
+    "facultyId": 1, "facultyName": "ФИТ",
+    "membershipStatus": "CONFIRMED", "isGroupLead": false,
+    "academicRating": 1000, "bua": 150, "boa": 75
+  },
+  "teacher": null
+}
+```
+
+`teacher`: `{ id, departmentId, departmentName, groups: [{id,name}] }`.
 
 ## Справочники
 
-| Method | Path |
-|--------|------|
-| GET | `/catalog/faculties` |
-| GET | `/catalog/faculties/{id}/groups` |
-| GET | `/catalog/departments` |
+| Method | Path | Доступ | Ответ |
+|--------|------|--------|-------|
+| GET | `/catalog/faculties` | public | `[{id,name}]` |
+| GET | `/catalog/faculties/{id}/groups` | public | `[{id,name,facultyId}]` |
+| GET | `/catalog/departments` | public | `[{id,name}]` |
+| GET | `/catalog/groups` | auth | `[{id,name,facultyId,facultyName}]` |
+| GET | `/catalog/groups/my` | teacher | группы преподавателя |
 
-## Профиль
+## Профиль и ledger (модуль 1)
+
+| Method | Path | Доступ | Ответ |
+|--------|------|--------|-------|
+| GET | `/users/{id}/profile` | auth | профиль (см. ниже) |
+| GET | `/users/{id}/ledger?cursor=&limit=` | self/teacher/admin | `Page<LedgerEntry>` |
+| GET | `/users/me/checkpoints` | student | `[StudentCheckpoint]` |
+| GET | `/users/me/activities` | student | `[StudentActivity]` |
+| GET | `/users/me/summary` | auth | сводка для главного экрана |
+| GET | `/users/me/notification-settings` | auth | `{emailEnabled, telegramEnabled, telegramChatId}` |
+| PUT | `/users/me/notification-settings` | auth | то же |
+
+`profile` (публичная часть — всем auth; ledger/задания только self/teacher/admin):
+
+```json
+{
+  "id": 4, "fullName": "Иван Иванов", "role": "STUDENT",
+  "email": "student@demo.local", "emailVerified": true,
+  "groupName": "ИВТ-21", "facultyName": "ФИТ", "departmentName": null,
+  "academicRating": 1000, "bua": 150, "boa": 75,
+  "membershipStatus": "CONFIRMED", "isGroupLead": false,
+  "ledger": [ { "id": 10, "date": "2026-11-10T10:00:00Z", "currency": "BOA", "amount": 50,
+                "reason": "Помощь в организации конференции", "actorName": "Анна Наумова" } ],
+  "activeCheckpoints": [ { "id": 1, "title": "Курсовая, 1 этап", "deadline": "…", "status": "IN_PROGRESS" } ],
+  "completedCheckpoints": []
+}
+```
+
+`Page<T>`: `{ "items": [ … ], "nextCursor": 123 | null }`.
+
+`LedgerEntry`: `id, date, currency (AR|BUA|BOA), amount (±), reason, actorName,
+refType, refId`.
+
+Формат истории (ТЗ): дата · `[+50 БОА]` · «Активность» от «ФИО».
+
+## Checkpoints / АР (модуль 2)
+
+| Method | Path | Роль | Тело / ответ |
+|--------|------|------|--------------|
+| POST | `/checkpoints` | Teacher | `{title, description, deadline, cost, groupIds[]}` → `CheckpointDetail` |
+| GET | `/checkpoints` | Teacher | свои checkpoint + счётчики |
+| GET | `/checkpoints/{id}` | Teacher/Student | детали + (для teacher) roster |
+| GET | `/checkpoints/{id}/roster` | Teacher | `{checkpoint, students:[RosterRow]}` |
+| POST | `/checkpoints/{id}/submit` | Student | JSON `{url?}` или multipart `file?`, `url?`; минимум одно |
+| POST | `/checkpoints/{id}/accept` | Teacher | `{studentIds:[…]}` |
+| POST | `/checkpoints/{id}/return` | Teacher | `{studentIds:[…], comment?}` |
+| GET | `/files/submissions/{submissionId}` | owner/teacher/admin | файл (download) |
+
+`SubmittableResponse`: `id, checkpointId, title, description, deadline, cost, status, arDebited,
+submittedAt, submissionUrl, fileName, returnComment, teacherName`.
+
+`RosterRow`: `studentUserId, studentProfileId, fullName, groupName, status, arDebited, cost,
+submittedAt, submissionUrl, fileName, returnComment`.
+
+Статусы: `IN_PROGRESS`, `SUBMITTED`, `OVERDUE`, `ACCEPTED`, `RETURNED` (RU-подписи в UI:
+«В процессе», «Сдано на проверку», «Просрочено», «Принято», «На доработке»).
+
+## Activities / баллы (модуль 3)
+
+| Method | Path | Роль | Тело / ответ |
+|--------|------|------|--------------|
+| POST | `/activities` | Teacher | `{title, description, type: ACADEMIC|SOCIAL, eventDate, maxPoints, groupIds[]}` |
+| GET | `/activities` | auth | student — целевые, teacher — свои |
+| GET | `/activities/{id}` | auth | детали + enrollment/awards |
+| POST | `/activities/{id}/enroll` | Student | SOCIAL, целевая группа; 409 если уже записан |
+| POST | `/activities/{id}/award` | Teacher | `{awards:[{studentId, level:25|50|75|100}]}` |
+| GET | `/activities/{id}/participants` | Teacher | `[{studentUserId, fullName, groupName, enrolled, awardedPoints, level}]` |
+| GET | `/teachers/me/budget?groupId=&yearMonth=YYYY-MM` | Teacher | `{yearMonth, groupId, limit, spent, remaining, awards:[…]}` |
+| GET | `/teachers/me/budgets?yearMonth=` | Teacher | остаток по всем группам |
+
+Ошибки бюджета: `400 BUDGET_EXCEEDED`; повторная награда — `409 AWARD_ALREADY_EXISTS`;
+SOCIAL без записи — `400 NOT_ENROLLED`; чужая группа — `403 GROUP_NOT_TARGETED`.
+
+## Лента наград (модуль 4)
+
+| Method | Path | Доступ |
+|--------|------|--------|
+| GET | `/feed/awards?cursor=&limit=` | auth |
+
+Элемент: `{ id, studentUserId, studentName, groupName, currency, amount, activityTitle,
+teacherName, createdAt }`. Только БУА/БОА, новые сверху.
+
+## Опросы (модуль 5)
+
+| Method | Path | Роль | Тело / ответ |
+|--------|------|------|--------------|
+| POST | `/polls` | Teacher | `{title, description, endsAt, targetGroupIds[], isAnonymous, questions:[{text,type,options[]}]}` |
+| GET | `/polls` | auth | список (student — целевые, teacher — свои) |
+| GET | `/polls/{id}` | auth | деталь; статистика только после голоса/для teacher/после endsAt |
+| POST | `/polls/{id}/vote` | Student | `{answers:[{questionId, optionIds[]}]}` |
+| GET | `/polls/{id}/results` | Student (после) / Teacher | агрегаты (+ voter-детали, если !anonymous и teacher) |
+
+`PollDetail`: `id, title, description, endsAt, isAnonymous, status (ACTIVE|ENDED),
+hasVoted, canVote, questions:[{id,text,type,options:[{id,text}]}], results?: [QuestionResult]`.
+`QuestionResult`: `questionId, text, type, totalVotes, options:[{optionId,text,count,percent}]`.
+
+## Персональная лента (модуль 6)
+
+| Method | Path | Доступ |
+|--------|------|--------|
+| GET | `/feed/personal?cursor=&limit=` | auth |
+
+Элемент: `{ id, type, message, createdAt }`. Типы из `12-personal-feed.md`.
+
+## Подтверждение группы (модуль 7)
+
+| Method | Path | Роль | Описание |
+|--------|------|------|----------|
+| GET | `/membership/requests` | Teacher/Lead/Admin | ожидающие в доступных группах |
+| POST | `/membership/{studentUserId}/confirm` | Teacher группы/Lead/Admin | `CONFIRMED` + назначение задач |
+| POST | `/membership/{studentUserId}/reject` | Teacher группы/Lead/Admin | `REJECTED` |
+
+## Администрирование (модуль 8)
 
 | Method | Path | Описание |
 |--------|------|----------|
-| GET | `/users/{id}/profile` | Публичный профиль (auth) |
-| GET | `/users/{id}/ledger` | История баллов |
-| GET | `/users/me/checkpoints` | Задачи студента |
-| GET | `/users/me/activities` | Активности студента |
+| GET/POST | `/admin/faculties` | список/создать `{name}` |
+| PUT/DELETE | `/admin/faculties/{id}` | изменить/удалить |
+| GET/POST | `/admin/groups` | `{name, facultyId}` |
+| PUT/DELETE | `/admin/groups/{id}` | |
+| GET/POST | `/admin/departments` | `{name}` |
+| PUT/DELETE | `/admin/departments/{id}` | |
+| POST | `/admin/import/students` | multipart `file` CSV/XLSX, отчёт `{created, skipped, errors:[{row,message}]}` |
+| GET | `/admin/settings` | `[{key,value,title,type}]` |
+| PATCH | `/admin/settings` | `{key:value,…}` |
+| GET/POST | `/admin/semesters` | `{name,startAt,endAt}` |
+| POST | `/admin/semesters/{id}/activate` | начисление бонуса, 409 при повторе |
+| GET | `/admin/users?role=` | пользователи |
+| GET | `/admin/stats` | счётчики для панели |
 
-## Checkpoints (АР)
+## Уведомления (модуль 9)
 
-| Method | Path | Role |
+| Method | Path |
+|--------|------|
+| GET | `/notifications?cursor=&limit=` |
+| GET | `/notifications/unread-count` |
+| PATCH | `/notifications/{id}/read` |
+| POST | `/notifications/read-all` |
+| GET/PUT | `/users/me/notification-settings` |
+
+`Notification`: `{id, title, body, kind, link, read, createdAt}`.
+
+## Аналитика (модуль 10)
+
+| Method | Path | Роль |
 |--------|------|------|
-| POST | `/checkpoints` | Teacher |
-| GET | `/checkpoints/{id}` | Teacher/Student |
-| POST | `/checkpoints/{id}/submit` | Student (url?, file?) |
-| POST | `/checkpoints/{id}/accept` | Teacher `{ studentIds: [] }` |
-| POST | `/checkpoints/{id}/return` | Teacher `{ studentIds: [] }` |
-| GET | `/checkpoints/{id}/roster` | Teacher |
+| GET | `/analytics/groups/{id}/ar-dynamics?days=30` | Teacher группы |
+| GET | `/analytics/groups/{id}/activity-ranking?days=90` | Teacher группы |
+| GET | `/analytics/teachers/me/budget-stats?months=6` | Teacher |
+| GET | `/analytics/teachers/me/overview` | Teacher |
 
-## Activities
+`ar-dynamics`: `{groupId, groupName, points:[{date, average, median}], students:[{…}]}`.
+`activity-ranking`: `{students:[{studentUserId, fullName, groupName, bua, boa, total}]}`.
+`budget-stats`: `{months:[{yearMonth, limit, spent, groups:[{groupId,groupName,spent,limit}]}]}`.
 
-| Method | Path | Role |
-|--------|------|------|
-| POST | `/activities` | Teacher |
-| POST | `/activities/{id}/enroll` | Student (SOCIAL) |
-| POST | `/activities/{id}/award` | Teacher `{ awards: [{studentId, level}] }` |
-| GET | `/teachers/me/budget?groupId=&yearMonth=` | Teacher |
+## ИИ (модуль 11)
 
-## Feed
+| Method | Path | Роль | Тело → ответ |
+|--------|------|------|--------------|
+| POST | `/ai/draft-checkpoint` | Teacher | `{title, theses}` → `{text, provider}` |
+| POST | `/ai/poll-summary` | Teacher | `{pollId}` → `{text, provider}` |
+| POST | `/ai/rating-tips` | Student | `{}` → `{tips:[…], provider}` |
 
-| Method | Path |
-|--------|------|
-| GET | `/feed/awards?cursor=` | Модуль 4 |
-| GET | `/feed/personal?cursor=` | Модуль 6 |
+`provider`: `openai` | `demo`. Без ключа используется demo-fallback; при ошибке настроенного
+LLM — `503 AI_UNAVAILABLE`, UI показывает сообщение и форма остаётся рабочей.
 
-## Polls (5)
+## Health
 
-| Method | Path |
-|--------|------|
-| POST | `/polls` | Teacher |
-| POST | `/polls/{id}/vote` | Student |
-| GET | `/polls/{id}/results` | Student (после голоса) / Teacher detail |
-
-## Admin (8)
-
-| Method | Path |
-|--------|------|
-| CRUD | `/admin/faculties`, `/groups`, `/departments` |
-| POST | `/admin/import/students` | CSV/Excel |
-| PATCH | `/admin/settings` | |
-| POST | `/admin/semesters/{id}/activate` | |
-
-## Notifications (9)
-
-| Method | Path |
-|--------|------|
-| GET | `/notifications` | |
-| PATCH | `/notifications/{id}/read` | |
-| PUT | `/users/me/notification-settings` | telegram/email |
-
-## Analytics (10)
-
-| Method | Path |
-|--------|------|
-| GET | `/analytics/groups/{id}/ar-dynamics` | Teacher |
-| GET | `/analytics/groups/{id}/activity-ranking` | |
-| GET | `/analytics/teachers/me/budget-stats` | |
-
-## AI (11)
-
-| Method | Path |
-|--------|------|
-| POST | `/ai/draft-checkpoint` | Teacher: тезисы → описание |
-| POST | `/ai/poll-summary` | Teacher |
-| POST | `/ai/rating-tips` | Student |
-
-Полные JSON Schema — дополнять по мере реализации; не менять смысл полей без правки этого файла.
+| Method | Path | Ответ |
+|--------|------|-------|
+| GET | `/health` | `{"status":"UP"}` |
