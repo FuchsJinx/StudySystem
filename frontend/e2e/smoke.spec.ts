@@ -47,6 +47,11 @@ test("teacher creates checkpoint and student submits it", async ({ browser }) =>
   await studentPage.reload();
   await expect(studentPage.locator(".task-card", { hasText: title }).getByText("Принято")).toBeVisible();
 
+  await studentPage.goto("/my-feed");
+  await expect(
+    studentPage.locator(".personal-event").filter({ hasText: title }).filter({ hasText: "принята" }),
+  ).toBeVisible();
+
   await teacherContext.close();
   await studentContext.close();
 });

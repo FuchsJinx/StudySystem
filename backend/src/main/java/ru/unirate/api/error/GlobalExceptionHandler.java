@@ -2,6 +2,7 @@ package ru.unirate.api.error;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -63,6 +64,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleUnreadable(Exception ex) {
         return ResponseEntity.badRequest()
                 .body(ApiErrorResponse.of(ErrorCodes.VALIDATION_FAILED, "Некорректный формат запроса"));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of(ErrorCodes.CONFLICT,
+                        "Действие конфликтует с существующими данными: сначала удалите связанные записи"));
     }
 
     @ExceptionHandler(Exception.class)
