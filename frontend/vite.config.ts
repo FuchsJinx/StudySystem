@@ -5,6 +5,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    watch: {
+      ignored: ["**/.*.tmpdir/**", "**/*.tmp", "**/test-results/**", "**/playwright-report/**"],
+    },
     proxy: {
       "/api": {
         target: "http://localhost:8080",

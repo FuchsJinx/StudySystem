@@ -17,7 +17,7 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: unirate
+          POSTGRES_DB: unirate_test
           POSTGRES_USER: unirate
           POSTGRES_PASSWORD: unirate
         ports:
@@ -37,11 +37,11 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Unit tests
+      - name: Unit and integration tests
         env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/unirate
-          SPRING_DATASOURCE_USERNAME: unirate
-          SPRING_DATASOURCE_PASSWORD: unirate
+          TEST_DATABASE_URL: jdbc:postgresql://localhost:5432/unirate_test
+          TEST_DATABASE_USERNAME: unirate
+          TEST_DATABASE_PASSWORD: unirate
         run: mvn -B test
       - name: Package
         run: mvn -B -DskipTests package
@@ -67,26 +67,45 @@ jobs:
         run: npm test
 
   docker:
-    name: Docker Compose build
+    name: Docker Compose + E2E
     runs-on: ubuntu-latest
     needs: [backend, frontend]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Build images
         run: docker compose build
       - name: Up stack
         run: docker compose up -d
       - name: Wait for health
         run: |
-          for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:8080/api/v1/health | grep -q UP; then
-              echo "backend OK"
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:8080/api/v1/health | grep -q UP && \
+               curl -sf http://127.0.0.1/ | grep -q UniRate; then
+              echo "stack OK"
               exit 0
             fi
             sleep 5
           done
           docker compose logs
           exit 1
+      - name: Install frontend tooling
+        working-directory: frontend
+        run: npm ci
+      - name: Install Chromium for Playwright
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: E2E tests
+        working-directory: frontend
+        env:
+          CI: "true"
+          E2E_BASE_URL: http://127.0.0.1
+        run: npx playwright test
+      - name: Stack logs on failure
+        if: failure()
+        run: docker compose logs --no-color
       - name: Tear down
         if: always()
         run: docker compose down -v
