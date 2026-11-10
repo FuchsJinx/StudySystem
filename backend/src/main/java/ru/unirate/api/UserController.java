@@ -10,9 +10,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import ru.unirate.api.dto.ActivityDtos;
 import ru.unirate.api.dto.CheckpointDtos;
 import ru.unirate.api.dto.ProfileDtos;
 import ru.unirate.api.security.AuthUser;
+import ru.unirate.application.ActivityService;
 import ru.unirate.application.CheckpointService;
 import ru.unirate.application.ProfileService;
 
@@ -24,10 +26,20 @@ public class UserController {
 
     private final ProfileService profileService;
     private final CheckpointService checkpointService;
+    private final ActivityService activityService;
 
-    public UserController(ProfileService profileService, CheckpointService checkpointService) {
+    public UserController(ProfileService profileService, CheckpointService checkpointService,
+                          ActivityService activityService) {
         this.profileService = profileService;
         this.checkpointService = checkpointService;
+        this.activityService = activityService;
+    }
+
+    @GetMapping("/me/activities")
+    @PreAuthorize("hasRole('STUDENT')")
+    public List<ActivityDtos.ActivitySummaryDto> myActivities(
+            @AuthenticationPrincipal AuthUser viewer) {
+        return activityService.list(viewer);
     }
 
     @GetMapping("/me/checkpoints")

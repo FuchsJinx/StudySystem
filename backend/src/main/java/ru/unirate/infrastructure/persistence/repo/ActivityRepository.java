@@ -18,6 +18,9 @@ public interface ActivityRepository extends JpaRepository<Activity, Long> {
     List<Activity> findAllByGroupsIdOrderByEventDateDesc(Long groupId);
 
     @EntityGraph(attributePaths = {"groups", "createdBy", "createdBy.user"})
+    List<Activity> findAllByOrderByEventDateDesc();
+
+    @EntityGraph(attributePaths = {"groups", "createdBy", "createdBy.user"})
     @Query("select a from Activity a where a.id = :id")
     Optional<Activity> findWithDetailsById(@Param("id") Long id);
 
