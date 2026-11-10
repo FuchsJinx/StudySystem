@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "../shared/api/client";
-import type { AwardFeedItem, PageResponse } from "../shared/api/activityTypes";
+import type { AwardFeedItem } from "../shared/api/activityTypes";
+import type { PageResponse } from "../shared/api/types";
 import { formatDateTime, formatAmount, timeAgo } from "../shared/format";
 import { Alert, Avatar, Button, Card, EmptyState, PageHeader, PageLoader } from "../shared/ui";
 

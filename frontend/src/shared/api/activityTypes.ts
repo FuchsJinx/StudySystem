@@ -89,8 +89,3 @@ export interface AwardFeedItem {
   teacherName: string;
   createdAt: string;
 }
-
-export interface PageResponse<T> {
-  items: T[];
-  nextCursor: number | null;
-}
