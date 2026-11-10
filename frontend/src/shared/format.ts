@@ -92,6 +92,11 @@ export function plural(count: number, one: string, few: string, many: string): s
   return many;
 }
 
+export function toDateInputValue(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 export function toDateTimeInputValue(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, "0");
   const year = date.getFullYear();
