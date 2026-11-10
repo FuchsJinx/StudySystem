@@ -1,0 +1,17 @@
+package ru.unirate.domain.model;
+
+/** Personal feed event codes (spec 12). */
+public enum FeedEventType {
+    CHECKPOINT_ASSIGNED,
+    DEADLINE_SOON,
+    SUBMISSION_ACCEPTED,
+    SUBMISSION_RETURNED,
+    POINTS_AWARDED,
+    POLL_CREATED,
+    ACTIVITY_CREATED,
+    SUBMISSION_RECEIVED,
+    POLL_ENDED,
+    MEMBERSHIP_CONFIRMED,
+    MEMBERSHIP_REJECTED,
+    SEMESTER_BONUS
+}
