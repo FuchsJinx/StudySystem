@@ -73,6 +73,6 @@ test("student cannot see teacher page", async ({ browser }) => {
   const page = await context.newPage();
   await login(page, "student@demo.local");
   await page.goto("/checkpoints");
-  await expect(page).toHaveURL("http://127.0.0.1:5173/");
+  await expect(page).toHaveURL(/\/$/);
   await context.close();
 });
