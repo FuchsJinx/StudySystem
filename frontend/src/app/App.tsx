@@ -15,6 +15,9 @@ import { AwardFeedPage } from "../pages/AwardFeedPage";
 import { ActivitiesPage } from "../pages/ActivitiesPage";
 import { TeacherActivityDetailPage } from "../pages/TeacherActivityDetailPage";
 import { BudgetPage } from "../pages/BudgetPage";
+import { PollsPage } from "../pages/PollsPage";
+import { PollCreatePage } from "../pages/PollCreatePage";
+import { PollDetailPage } from "../pages/PollDetailPage";
 
 function NotFoundPage() {
   return (
@@ -65,9 +68,12 @@ export function App() {
           <Route path="/users/:id" element={<ProfilePage />} />
           <Route element={<RequireRole roles={["STUDENT", "TEACHER"]} />}>
             <Route path="/activities" element={<ActivitiesPage />} />
+            <Route path="/polls" element={<PollsPage />} />
+            <Route path="/polls/:id" element={<PollDetailPage />} />
           </Route>
           <Route element={<RequireRole roles={["TEACHER"]} />}>
             <Route path="/activities/:id" element={<TeacherActivityDetailPage />} />
+            <Route path="/polls/new" element={<PollCreatePage />} />
             <Route path="/budget" element={<BudgetPage />} />
           </Route>
           <Route element={<RequireRole roles={["STUDENT"]} />}>
