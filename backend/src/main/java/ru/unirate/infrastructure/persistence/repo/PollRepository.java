@@ -18,7 +18,10 @@ public interface PollRepository extends JpaRepository<Poll, Long> {
     @EntityGraph(attributePaths = {"groups", "createdBy", "createdBy.user"})
     List<Poll> findAllByGroupsIdOrderByEndsAtDesc(Long groupId);
 
-    @EntityGraph(attributePaths = {"groups", "createdBy", "createdBy.user", "questions", "questions.options"})
+    @EntityGraph(attributePaths = {"groups", "createdBy", "createdBy.user"})
+    List<Poll> findAllByOrderByCreatedAtDesc();
+
+    @EntityGraph(attributePaths = {"groups", "createdBy", "createdBy.user"})
     @Query("select p from Poll p where p.id = :id")
     Optional<Poll> findWithDetailsById(@Param("id") Long id);
 

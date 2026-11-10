@@ -1,8 +1,9 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/unirate}
-    username: ${SPRING_DATASOURCE_USERNAME:unirate}
-    password: ${SPRING_DATASOURCE_PASSWORD:unirate}
+    # Dedicated database: tests must never depend on demo/E2E data in the dev database.
+    url: ${TEST_DATABASE_URL:jdbc:postgresql://localhost:5432/unirate_test}
+    username: ${TEST_DATABASE_USERNAME:unirate}
+    password: ${TEST_DATABASE_PASSWORD:unirate}
   mail:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:1025}
