@@ -11,6 +11,7 @@ public final class ErrorCodes {
     public static final String UNAUTHORIZED = "UNAUTHORIZED";
     public static final String ACCESS_DENIED = "ACCESS_DENIED";
     public static final String NOT_FOUND = "NOT_FOUND";
+    public static final String CONFLICT = "CONFLICT";
     public static final String EMAIL_ALREADY_USED = "EMAIL_ALREADY_USED";
     public static final String EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED";
     public static final String GROUP_NOT_CONFIRMED = "GROUP_NOT_CONFIRMED";
